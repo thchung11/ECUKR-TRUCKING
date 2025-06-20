@@ -150,9 +150,8 @@
     <div class="result" id="rate">💰 최종 운송 요금: -</div>
 
     <p class="info">
-      Ver.1.14.5 <br>
-      (도시 팝업, 중량화물 우선 적용, 5달러 조정 버튼 외부 위치)<br>
-      계산 후 <strong>5 단위 올림 처리</strong> + 5달러 추가 여부 선택 가능<br>
+      Ver.1.15 <br>
+      다양한 버그 수정<br><br>
       Zone 7 또는 10톤 초과 중량화물은 담당자 문의<br><br>
       문제 있으면 네이트온 주세요.. 정태화 / benchung95@nate.com<br>
       원본 엑셀파일 : https://tinyurl.com/28bl3mth</p>
@@ -314,72 +313,89 @@
       return null;
     }
 
-    function updateRate() {
-      const city = cityInput.value.trim();
-      const cbmVal = parseFloat(cbmInput.value);
-      const weightValRaw = weightInput.value.trim();
-      const extraRaw = extraInput.value.trim();
+function updateRate() {
+  const city = cityInput.value.trim();
+  const cbmVal = parseFloat(cbmInput.value);
+  const weightValRaw = weightInput.value.trim();
+  const extraRaw = extraInput.value.trim();
 
-      let extra = 0;
-      if (extraRaw === "") {
-        extra = 0;
-      } else if (!/^\d+$/.test(extraRaw)) {
-        errorMsg.textContent = "❗ 추가 비용은 0 이상의 숫자여야 합니다.";
-        rateDisplay.textContent = "💰 최종 운송 요금: -";
-        return;
-      } else {
-        extra = parseInt(extraRaw, 10);
-        if (extra % 10 !== 0) {
-          errorMsg.textContent = "❗ 추가 비용은 10단위 숫자여야 합니다.";
-          rateDisplay.textContent = "💰 최종 운송 요금: -";
-          return;
-        }
-      }
-
-      if (!rateTable[city]) {
-        errorMsg.textContent = "❗ 유효한 도시를 선택해 주세요.";
-        rateDisplay.textContent = "💰 최종 운송 요금: -";
-        return;
-      }
-
-      errorMsg.textContent = "";
-
-      const cityRateArray = rateTable[city];
-      let cbmIndex = 0;
-      if (!isNaN(cbmVal) && cbmVal > 0) {
-        cbmIndex = Math.min(Math.floor(cbmVal) - 1, cityRateArray.length - 1);
-        if (cbmIndex < 0) cbmIndex = 0;
-      }
-
-      const weightVal = weightValRaw === "" ? null : Number(weightValRaw);
-      let finalRate = 0;
-      let isHeavy = false;
-      const zone = findZone(city);
-
-      if (weightVal !== null && !isNaN(weightVal) && zone !== null) {
-        if (!isNaN(cbmVal) && cbmVal > 0 && weightVal < cbmVal * 1000) {
-          finalRate = cityRateArray[cbmIndex];
-        } else {
-          isHeavy = true;
-          let tonIndex = weightVal <= 1000 ? 0 : Math.min(Math.floor((weightVal - 1000) / 500), heavyRateTable[zone]?.length - 1);
-          finalRate = heavyRateTable[zone][tonIndex];
-        }
-      } else {
-        finalRate = cityRateArray[cbmIndex];
-      }
-
-      let total = finalRate + extra;
-      total = Math.ceil(total / 5) * 5;
-
-      // ✅ 적용 시 5로 끝나는 수에 5 추가
-      if (applyFiveUp && total % 10 === 5) {
-        total += 5;
-      }
-
-      rateDisplay.textContent = `💰 최종 운송 요금: ${total} 달러${isHeavy ? " (중량화물)" : ""}`;
-      rateDisplay.className = "result";
-      if (isHeavy) rateDisplay.classList.add("heavy");
+  let extra = 0;
+  if (extraRaw === "") {
+    extra = 0;
+  } else if (!/^\d+$/.test(extraRaw)) {
+    errorMsg.textContent = "❗ 추가 비용은 0 이상의 숫자여야 합니다.";
+    rateDisplay.textContent = "💰 최종 운송 요금: -";
+    return;
+  } else {
+    extra = parseInt(extraRaw, 10);
+    if (extra % 10 !== 0) {
+      errorMsg.textContent = "❗ 추가 비용은 10단위 숫자여야 합니다.";
+      rateDisplay.textContent = "💰 최종 운송 요금: -";
+      return;
     }
+  }
+
+  if (!rateTable[city]) {
+    errorMsg.textContent = "❗ 유효한 도시를 선택해 주세요.";
+    rateDisplay.textContent = "💰 최종 운송 요금: -";
+    return;
+  }
+
+  errorMsg.textContent = "";
+
+  const cityRateArray = rateTable[city];
+  let cbmIndex = 0;
+  if (!isNaN(cbmVal) && cbmVal > 0) {
+    cbmIndex = Math.min(Math.floor(cbmVal) - 1, cityRateArray.length - 1);
+    if (cbmIndex < 0) cbmIndex = 0;
+  }
+
+  const weightVal = weightValRaw === "" ? null : Number(weightValRaw);
+  const zone = findZone(city);
+
+  let finalRate = 0;
+  let isHeavy = false;
+
+  if (weightVal !== null && !isNaN(weightVal) && zone !== null) {
+    const isOverCBM = isNaN(cbmVal) || cbmVal <= 0 || weightVal >= cbmVal * 1000;
+
+    if (isOverCBM) {
+      isHeavy = true;
+
+      // 🚫 경고 조건 1: Zone 7 + 중량화물
+      if (zone === 7) {
+        errorMsg.textContent = "❗ Zone 7 지역의 중량화물은 별도 문의 바랍니다.";
+        rateDisplay.textContent = "💰 최종 운송 요금: -";
+        return;
+      }
+
+      // 🚫 경고 조건 2: 10톤 초과
+      if (weightVal > 10000) {
+        errorMsg.textContent = "❗ 10톤 초과 화물은 별도 문의 바랍니다.";
+        rateDisplay.textContent = "💰 최종 운송 요금: -";
+        return;
+      }
+
+      let tonIndex = weightVal <= 1000 ? 0 : Math.min(Math.floor((weightVal - 1000) / 500), heavyRateTable[zone]?.length - 1);
+      finalRate = heavyRateTable[zone][tonIndex];
+    } else {
+      finalRate = cityRateArray[cbmIndex];
+    }
+  } else {
+    finalRate = cityRateArray[cbmIndex];
+  }
+
+  let total = finalRate + extra;
+  total = Math.ceil(total / 5) * 5;
+
+  if (applyFiveUp && total % 10 === 5) {
+    total += 5;
+  }
+
+  rateDisplay.textContent = `💰 최종 운송 요금: ${total} 달러${isHeavy ? " (중량화물)" : ""}`;
+  rateDisplay.className = "result";
+  if (isHeavy) rateDisplay.classList.add("heavy");
+}
 
     cityInput.addEventListener("input", updateRate);
     cbmInput.addEventListener("input", updateRate);
