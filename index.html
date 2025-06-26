@@ -145,13 +145,15 @@
     </div>
 
     <button id="showCityBtn">📍 도시 목록 보기</button>
-
+<button id="showCBMBtn" style="background: #10b981; color: white; padding: 0.6rem 1rem; border: none; border-radius: 5px; cursor: pointer;">
+  📦 CBM 계산기
+</button>
     <div class="error" id="errorMsg"></div>
     <div class="result" id="rate">💰 최종 운송 요금: -</div>
 
     <p class="info">
-      Ver.1.15.2 <br>
-      25년 6월 20일 // 다양한 버그 수정<br><br>
+      Ver.1.16 <br>
+      25년 6월 26일 // CBM 계산기 기능추가<br><br>
       Zone 7 또는 10톤 초과 중량화물은 담당자 문의<br><br>
       문제 있으면 네이트온 주세요.. 정태화 / benchung95@nate.com<br>
       원본 엑셀파일 : https://tinyurl.com/28bl3mth</p>
@@ -165,6 +167,17 @@
     <div class="modal-content">
       <div class="close-btn" id="closeCityModal">✖ 닫기</div>
       <div id="cityListContainer"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="cbmModal">
+    <div class="modal-content">
+      <div class="close-btn" id="closeCBMModal">✖ 닫기</div>
+      <div id="cbmRowsContainer"></div>
+      <div id="cbmSummaryBox" style="margin-top: 1.5rem; padding: 1rem; background: #e0f2fe; border: 2px solid #38bdf8; border-radius: 10px; text-align: center; cursor: pointer;">
+        📦 총 CBM: <span id="totalCBM">0</span> CBM / 총 중량: <span id="totalWeight">0</span> KGS<br>
+        👉 클릭 시 본 계산기에 자동 입력됩니다
+      </div>
     </div>
   </div>
 
@@ -246,165 +259,261 @@
       7: ["군산", "완주", "전주"]
     };
 
-    const cityInput = document.getElementById("city");
-    const cbmInput = document.getElementById("cbm");
-    const weightInput = document.getElementById("weight");
-    const extraInput = document.getElementById("extra");
-    const rateDisplay = document.getElementById("rate");
-    const errorMsg = document.getElementById("errorMsg");
-    const cityList = document.getElementById("cityList");
-    const showCityBtn = document.getElementById("showCityBtn");
-    const cityModal = document.getElementById("cityModal");
-    const cityListContainer = document.getElementById("cityListContainer");
-    const closeCityModal = document.getElementById("closeCityModal");
+    document.addEventListener("DOMContentLoaded", () => {
+      // 변수 선언
+      const cityInput = document.getElementById("city");
+      const cbmInput = document.getElementById("cbm");
+      const weightInput = document.getElementById("weight");
+      const extraInput = document.getElementById("extra");
+      const rateDisplay = document.getElementById("rate");
+      const errorMsg = document.getElementById("errorMsg");
+      const cityList = document.getElementById("cityList");
+      const showCityBtn = document.getElementById("showCityBtn");
+      const cityModal = document.getElementById("cityModal");
+      const cityListContainer = document.getElementById("cityListContainer");
+      const closeCityModal = document.getElementById("closeCityModal");
+      const toggleAdjustBtn = document.getElementById("toggleAdjustBtn");
+      const showCBMBtn = document.getElementById("showCBMBtn");
+      const cbmModal = document.getElementById("cbmModal");
+      const closeCBMModal = document.getElementById("closeCBMModal");
+      const cbmRowsContainer = document.getElementById("cbmRowsContainer");
+      const totalCBMEl = document.getElementById("totalCBM");
+      const totalWeightEl = document.getElementById("totalWeight");
+      const cbmSummaryBox = document.getElementById("cbmSummaryBox");
 
-    let applyFiveUp = true; // ✅ 5달러 추가 적용 여부
+      let applyFiveUp = true;
 
-    const toggleAdjustBtn = document.getElementById("toggleAdjustBtn");
-    toggleAdjustBtn.addEventListener("click", () => {
-      applyFiveUp = !applyFiveUp;
-      toggleAdjustBtn.textContent = applyFiveUp ? "✅ 5달러 올림 적용중" : "❌ 5달러 올림 미적용";
-      updateRate();
-    });
+      toggleAdjustBtn.addEventListener("click", () => {
+        applyFiveUp = !applyFiveUp;
+        toggleAdjustBtn.textContent = applyFiveUp ? "✅ 5달러 올림 적용중" : "❌ 5달러 올림 미적용";
+        updateRate();
+      });
 
-    Object.keys(rateTable).forEach(city => {
-      const option = document.createElement("option");
-      option.value = city;
-      cityList.appendChild(option);
-    });
+      // 도시 리스트 옵션 추가
+      Object.keys(rateTable).forEach(city => {
+        const option = document.createElement("option");
+        option.value = city;
+        cityList.appendChild(option);
+      });
 
-    showCityBtn.addEventListener("click", () => {
-      cityModal.style.display = "flex";
-    });
+      showCityBtn.addEventListener("click", () => {
+        cityModal.style.display = "flex";
+      });
 
-    closeCityModal.addEventListener("click", () => {
-      cityModal.style.display = "none";
-    });
+      closeCityModal.addEventListener("click", () => {
+        cityModal.style.display = "none";
+      });
 
-    function createCityList() {
-      cityListContainer.innerHTML = "";
-      for (const [zone, cities] of Object.entries(zoneMap)) {
-        const zoneDiv = document.createElement("div");
-        zoneDiv.classList.add("zone-group");
+      function createCityList() {
+        cityListContainer.innerHTML = "";
+        for (const [zone, cities] of Object.entries(zoneMap)) {
+          const zoneDiv = document.createElement("div");
+          zoneDiv.classList.add("zone-group");
 
-        const title = document.createElement("div");
-        title.classList.add("zone-title");
-        title.textContent = `Zone ${zone}`;
-        zoneDiv.appendChild(title);
+          const title = document.createElement("div");
+          title.classList.add("zone-title");
+          title.textContent = `Zone ${zone}`;
+          zoneDiv.appendChild(title);
 
-        cities.forEach(city => {
-          const cityBtn = document.createElement("span");
-          cityBtn.classList.add("city-button");
-          cityBtn.textContent = city;
-          cityBtn.addEventListener("click", () => {
-            cityInput.value = city;
-            cityModal.style.display = "none";
-            updateRate();
+          cities.forEach(city => {
+            const cityBtn = document.createElement("span");
+            cityBtn.classList.add("city-button");
+            cityBtn.textContent = city;
+            cityBtn.addEventListener("click", () => {
+              cityInput.value = city;
+              cityModal.style.display = "none";
+              updateRate();
+            });
+            zoneDiv.appendChild(cityBtn);
           });
-          zoneDiv.appendChild(cityBtn);
+
+          cityListContainer.appendChild(zoneDiv);
+        }
+      }
+
+      createCityList();
+
+      function findZone(city) {
+        for (const [zone, cities] of Object.entries(zoneMap)) {
+          if (cities.includes(city)) return parseInt(zone);
+        }
+        return null;
+      }
+
+      function updateRate() {
+        const city = cityInput.value.trim();
+        const cbmVal = parseFloat(cbmInput.value);
+        const weightValRaw = weightInput.value.trim();
+        const extraRaw = extraInput.value.trim();
+
+        let extra = 0;
+        if (extraRaw === "") {
+          extra = 0;
+        } else if (!/^\d+$/.test(extraRaw)) {
+          errorMsg.textContent = "❗ 추가 비용은 0 이상의 숫자여야 합니다.";
+          rateDisplay.textContent = "💰 최종 운송 요금: -";
+          return;
+        } else {
+          extra = parseInt(extraRaw, 10);
+          if (extra % 10 !== 0) {
+            errorMsg.textContent = "❗ 추가 비용은 10단위 숫자여야 합니다.";
+            rateDisplay.textContent = "💰 최종 운송 요금: -";
+            return;
+          }
+        }
+
+        if (!rateTable[city]) {
+          errorMsg.textContent = "❗ 유효한 도시를 선택해 주세요.";
+          rateDisplay.textContent = "💰 최종 운송 요금: -";
+          return;
+        }
+
+        errorMsg.textContent = "";
+
+        const cityRateArray = rateTable[city];
+        let cbmIndex = 0;
+        if (!isNaN(cbmVal) && cbmVal > 0) {
+          cbmIndex = Math.min(Math.floor(cbmVal) - 1, cityRateArray.length - 1);
+          if (cbmIndex < 0) cbmIndex = 0;
+        }
+
+        const weightVal = weightValRaw === "" ? null : Number(weightValRaw);
+        const zone = findZone(city);
+
+        let finalRate = 0;
+        let isHeavy = false;
+
+        if (weightVal !== null && !isNaN(weightVal) && zone !== null) {
+          const isOverCBM = isNaN(cbmVal) || cbmVal <= 0 || weightVal >= cbmVal * 1000;
+
+          if (isOverCBM) {
+            isHeavy = true;
+
+            if (zone === 7) {
+              errorMsg.textContent = "❗ Zone 7 지역의 중량화물은 별도 문의 바랍니다.";
+              rateDisplay.textContent = "💰 최종 운송 요금: -";
+              return;
+            }
+
+            if (weightVal > 10000) {
+              errorMsg.textContent = "❗ 10톤 초과 화물은 별도 문의 바랍니다.";
+              rateDisplay.textContent = "💰 최종 운송 요금: -";
+              return;
+            }
+
+            let tonIndex = weightVal <= 1000 ? 0 : Math.min(Math.floor((weightVal - 1000) / 500), heavyRateTable[zone]?.length - 1);
+            finalRate = heavyRateTable[zone][tonIndex];
+          } else {
+            finalRate = cityRateArray[cbmIndex];
+          }
+        } else {
+          finalRate = cityRateArray[cbmIndex];
+        }
+
+        let total = finalRate + extra;
+        total = Math.ceil(total / 5) * 5;
+
+        if (applyFiveUp && total % 10 === 5) {
+          total += 5;
+        }
+
+        rateDisplay.textContent = `💰 최종 운송 요금: ${total} 달러${isHeavy ? " (중량화물)" : ""}`;
+        rateDisplay.className = "result";
+        if (isHeavy) rateDisplay.classList.add("heavy");
+      }
+
+      cityInput.addEventListener("input", updateRate);
+      cbmInput.addEventListener("input", updateRate);
+      weightInput.addEventListener("input", updateRate);
+      extraInput.addEventListener("input", updateRate);
+
+      // CBM 계산기 관련
+
+      showCBMBtn.addEventListener("click", () => {
+        cbmModal.style.display = "flex";
+      });
+
+      closeCBMModal.addEventListener("click", () => {
+        cbmModal.style.display = "none";
+      });
+
+      function createCBMRows() {
+        cbmRowsContainer.innerHTML = "";
+        for (let i = 1; i <= 7; i++) {
+          const row = document.createElement("div");
+          row.classList.add("cbm-row");
+          row.style.display = "flex";
+          row.style.alignItems = "center";
+          row.style.gap = "0.5rem";
+          row.style.marginBottom = "0.5rem";
+
+          const fields = ['L', 'W', 'H', 'PKG', '중량'];
+          const inputs = {};
+
+          fields.forEach(f => {
+            const input = document.createElement("input");
+            input.placeholder = f;
+            input.type = "number";
+            input.min = "0";
+            input.style.width = "60px";
+            input.style.padding = "0.3rem";
+            input.style.border = "1px solid #ccc";
+            input.style.borderRadius = "5px";
+            row.appendChild(input);
+            inputs[f] = input;
+          });
+
+          const cbmResult = document.createElement("div");
+          cbmResult.classList.add("cbm-result");
+          cbmResult.textContent = "0";
+          cbmResult.style.width = "60px";
+          cbmResult.style.textAlign = "center";
+          row.appendChild(cbmResult);
+
+          const recalc = () => {
+            const L = parseFloat(inputs['L'].value) || 0;
+            const W = parseFloat(inputs['W'].value) || 0;
+            const H = parseFloat(inputs['H'].value) || 0;
+            const P = parseInt(inputs['PKG'].value) || 0;
+            const cbm = L && W && H && P ? ((L * W * H * P) / 1000000) : 0;
+            cbmResult.textContent = cbm.toFixed(3);
+            updateCBMSummary();
+          };
+
+          Object.values(inputs).forEach(input => {
+            input.addEventListener("input", recalc);
+          });
+
+          row._inputs = inputs;
+          row._cbmResult = cbmResult;
+          cbmRowsContainer.appendChild(row);
+        }
+      }
+
+      function updateCBMSummary() {
+        let totalCBM = 0;
+        let totalWeight = 0;
+        cbmRowsContainer.querySelectorAll(".cbm-row").forEach(row => {
+          const cbm = parseFloat(row._cbmResult.textContent) || 0;
+          const weight = parseFloat(row._inputs['중량'].value) || 0;
+          totalCBM += cbm;
+          totalWeight += weight;
         });
-
-        cityListContainer.appendChild(zoneDiv);
-      }
-    }
-
-    function findZone(city) {
-      for (const [zone, cities] of Object.entries(zoneMap)) {
-        if (cities.includes(city)) return parseInt(zone);
-      }
-      return null;
-    }
-
-function updateRate() {
-  const city = cityInput.value.trim();
-  const cbmVal = parseFloat(cbmInput.value);
-  const weightValRaw = weightInput.value.trim();
-  const extraRaw = extraInput.value.trim();
-
-  let extra = 0;
-  if (extraRaw === "") {
-    extra = 0;
-  } else if (!/^\d+$/.test(extraRaw)) {
-    errorMsg.textContent = "❗ 추가 비용은 0 이상의 숫자여야 합니다.";
-    rateDisplay.textContent = "💰 최종 운송 요금: -";
-    return;
-  } else {
-    extra = parseInt(extraRaw, 10);
-    if (extra % 10 !== 0) {
-      errorMsg.textContent = "❗ 추가 비용은 10단위 숫자여야 합니다.";
-      rateDisplay.textContent = "💰 최종 운송 요금: -";
-      return;
-    }
-  }
-
-  if (!rateTable[city]) {
-    errorMsg.textContent = "❗ 유효한 도시를 선택해 주세요.";
-    rateDisplay.textContent = "💰 최종 운송 요금: -";
-    return;
-  }
-
-  errorMsg.textContent = "";
-
-  const cityRateArray = rateTable[city];
-  let cbmIndex = 0;
-  if (!isNaN(cbmVal) && cbmVal > 0) {
-    cbmIndex = Math.min(Math.floor(cbmVal) - 1, cityRateArray.length - 1);
-    if (cbmIndex < 0) cbmIndex = 0;
-  }
-
-  const weightVal = weightValRaw === "" ? null : Number(weightValRaw);
-  const zone = findZone(city);
-
-  let finalRate = 0;
-  let isHeavy = false;
-
-  if (weightVal !== null && !isNaN(weightVal) && zone !== null) {
-    const isOverCBM = isNaN(cbmVal) || cbmVal <= 0 || weightVal >= cbmVal * 1000;
-
-    if (isOverCBM) {
-      isHeavy = true;
-
-      // 🚫 경고 조건 1: Zone 7 + 중량화물
-      if (zone === 7) {
-        errorMsg.textContent = "❗ Zone 7 지역의 중량화물은 별도 문의 바랍니다.";
-        rateDisplay.textContent = "💰 최종 운송 요금: -";
-        return;
+        totalCBMEl.textContent = totalCBM.toFixed(3);
+        totalWeightEl.textContent = totalWeight;
       }
 
-      // 🚫 경고 조건 2: 10톤 초과
-      if (weightVal > 10000) {
-        errorMsg.textContent = "❗ 10톤 초과 화물은 별도 문의 바랍니다.";
-        rateDisplay.textContent = "💰 최종 운송 요금: -";
-        return;
-      }
+      cbmSummaryBox.addEventListener("click", () => {
+        const totalCBM = parseFloat(totalCBMEl.textContent) || 0;
+        const totalWeight = parseFloat(totalWeightEl.textContent) || 0;
+        cbmInput.value = totalCBM;
+        weightInput.value = totalWeight;
+        updateRate();
+        cbmModal.style.display = "none";
+      });
 
-      let tonIndex = weightVal <= 1000 ? 0 : Math.min(Math.floor((weightVal - 1000) / 500), heavyRateTable[zone]?.length - 1);
-      finalRate = heavyRateTable[zone][tonIndex];
-    } else {
-      finalRate = cityRateArray[cbmIndex];
-    }
-  } else {
-    finalRate = cityRateArray[cbmIndex];
-  }
-
-  let total = finalRate + extra;
-  total = Math.ceil(total / 5) * 5;
-
-  if (applyFiveUp && total % 10 === 5) {
-    total += 5;
-  }
-
-  rateDisplay.textContent = `💰 최종 운송 요금: ${total} 달러${isHeavy ? " (중량화물)" : ""}`;
-  rateDisplay.className = "result";
-  if (isHeavy) rateDisplay.classList.add("heavy");
-}
-
-    cityInput.addEventListener("input", updateRate);
-    cbmInput.addEventListener("input", updateRate);
-    weightInput.addEventListener("input", updateRate);
-    extraInput.addEventListener("input", updateRate);
-
-    createCityList();
+      createCBMRows();
+    });
   </script>
 </body>
 </html>
