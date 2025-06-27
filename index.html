@@ -286,8 +286,8 @@
       let applyFiveUp = true;
 
       toggleAdjustBtn.addEventListener("click", () => {
-        !applyFiveUp = applyFiveUp;
-        toggleAdjustBtn.textContent = applyFiveUp ? "❌ 5달러 올림 미적용중" : "✅ 5달러 올림 적용중";
+        applyFiveUp = !applyFiveUp;
+        toggleAdjustBtn.textContent = applyFiveUp ? "✅ 5달러 올림 적용중" : "❌ 5달러 올림 미적용중";
         updateRate();
       });
 
