@@ -152,8 +152,8 @@
     <div class="result" id="rate">💰 최종 운송 요금: -</div>
 
     <p class="info">
-      Ver.1.16 <br>
-      25년 6월 26일 // CBM 계산기 기능추가<br><br>
+      Ver.1.16.1 <br>
+      25년 6월 27일 // CBM 계산기 문구 보강<br><br>
       Zone 7 또는 10톤 초과 중량화물은 담당자 문의<br><br>
       문제 있으면 네이트온 주세요.. 정태화 / benchung95@nate.com<br>
       원본 엑셀파일 : https://tinyurl.com/28bl3mth</p>
@@ -176,7 +176,8 @@
       <div id="cbmRowsContainer"></div>
       <div id="cbmSummaryBox" style="margin-top: 1.5rem; padding: 1rem; background: #e0f2fe; border: 2px solid #38bdf8; border-radius: 10px; text-align: center; cursor: pointer;">
         📦 총 CBM: <span id="totalCBM">0</span> CBM / 총 중량: <span id="totalWeight">0</span> KGS<br>
-        👉 클릭 시 본 계산기에 자동 입력됩니다
+        👉 클릭 시 본 계산기에 자동 입력됩니다<br>
+        ⚠️ CM 단위로 입력 바랍니다
       </div>
     </div>
   </div>
@@ -447,7 +448,7 @@
           row.style.gap = "0.5rem";
           row.style.marginBottom = "0.5rem";
 
-          const fields = ['L', 'W', 'H', 'PKG', '중량'];
+          const fields = ['L', 'W', 'H', 'PKG', '총중량'];
           const inputs = {};
 
           fields.forEach(f => {
@@ -495,7 +496,7 @@
         let totalWeight = 0;
         cbmRowsContainer.querySelectorAll(".cbm-row").forEach(row => {
           const cbm = parseFloat(row._cbmResult.textContent) || 0;
-          const weight = parseFloat(row._inputs['중량'].value) || 0;
+          const weight = parseFloat(row._inputs['총중량'].value) || 0;
           totalCBM += cbm;
           totalWeight += weight;
         });
