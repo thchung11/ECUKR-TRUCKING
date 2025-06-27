@@ -152,8 +152,9 @@
     <div class="result" id="rate">💰 최종 운송 요금: -</div>
 
     <p class="info">
-      Ver.1.16.1 <br>
-      25년 6월 27일 // CBM 계산기 문구 보강<br><br>
+      Ver.1.16.2 <br>
+      25년 6월 27일 // CBM 계산기 문구 보강<br>
+      5달러 업 미적용을 기본값으로 변경<br><br>
       Zone 7 또는 10톤 초과 중량화물은 담당자 문의<br><br>
       문제 있으면 네이트온 주세요.. 정태화 / benchung95@nate.com<br>
       원본 엑셀파일 : https://tinyurl.com/28bl3mth</p>
@@ -285,8 +286,8 @@
       let applyFiveUp = true;
 
       toggleAdjustBtn.addEventListener("click", () => {
-        applyFiveUp = !applyFiveUp;
-        toggleAdjustBtn.textContent = applyFiveUp ? "✅ 5달러 올림 적용중" : "❌ 5달러 올림 미적용";
+        !applyFiveUp = applyFiveUp;
+        toggleAdjustBtn.textContent = applyFiveUp ? "❌ 5달러 올림 미적용중" : "✅ 5달러 올림 적용중";
         updateRate();
       });
 
